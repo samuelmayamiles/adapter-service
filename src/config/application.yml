@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: adapter-service
+
+server:
+  port: 5000
+
+logging:
+  level:
+    org.springframework.web: ERROR
+    org.springframework.security: ERROR
+    com.smm: INFO
+    root: ERROR
+
+management:
+  health:
+    probes:
+      enabled: true
+
+services:
+  mock-service: http://localhost:3001
+
+springdoc:
+  api-docs:
+    enabled: ${config.documentation-enabled}
+  swagger-ui:
+    enabled: ${config.documentation-enabled}
+    path: "/"
+
+config:
+  documentation-enabled: true
