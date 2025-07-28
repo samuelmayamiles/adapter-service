@@ -17,6 +17,7 @@ dist/
 **/build/
 
 # JetBrains IDE
+*.iml
 .idea/
 
 # Unit test reports
