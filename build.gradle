@@ -1,0 +1,140 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'jacoco'
+    id 'org.springframework.boot' version '2.7.2'
+}
+
+group 'com.smm'
+version = file('version.txt').text.trim()
+
+// Dependencies versioning
+def springBootVersion = '2.7.2'
+def springDocVersion = '1.6.10'
+def openFeignVersion = '3.1.4'
+def feignClientVersion = '11.2'
+def lombokVersion = '1.18.18'
+def mapstructVersion = '1.4.2.Final'
+def apacheCommonVersion = '3.12.0'
+def junitVersion = '5.8.1'
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDirs(['src/config', 'src/main/resources'])
+        }
+    }
+    testIntegration {
+        java {
+            srcDir 'src/test-integration/java'
+        }
+        resources {
+            srcDir 'src/test-integration/resources'
+        }
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+idea {
+    module {
+        testSourceDirs += sourceSets.testIntegration.java.srcDirs
+        testSourceDirs += sourceSets.testIntegration.resources.srcDirs
+    }
+}
+
+dependencies {
+
+    // Internal
+    implementation project(':adapter-service-client')
+
+    // Spring
+    implementation group: 'org.springframework.boot', name: 'spring-boot-starter-actuator', version: springBootVersion
+    implementation group: 'org.springframework.boot', name: 'spring-boot-starter-validation', version: springBootVersion
+    implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version: springBootVersion
+
+    // Documentation
+    implementation group: 'org.springdoc', name: 'springdoc-openapi-ui', version: springDocVersion
+
+    // Feign
+    implementation group: 'org.springframework.cloud', name: 'spring-cloud-starter-openfeign', version: openFeignVersion
+    implementation group: 'io.github.openfeign', name: 'feign-httpclient', version: feignClientVersion
+
+    // Annotation Processors
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+    annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+    compileOnly group: 'org.mapstruct', name: 'mapstruct', version: mapstructVersion
+    annotationProcessor group: 'org.mapstruct', name: 'mapstruct-processor', version: mapstructVersion
+
+    // Tests
+    testImplementation group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonVersion
+    testImplementation group: 'org.springframework.boot', name: 'spring-boot-starter-test', version: springBootVersion
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: junitVersion
+    testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: junitVersion
+}
+
+configurations {
+    testIntegrationImplementation.extendsFrom testImplementation
+    testIntegrationRuntimeOnly.extendsFrom testRuntimeOnly
+    all {
+        resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+task integrationTest(type: Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+
+    testClassesDirs = sourceSets.testIntegration.output.classesDirs
+    classpath = sourceSets.testIntegration.runtimeClasspath
+    useJUnitPlatform()
+
+    shouldRunAfter test
+    finalizedBy jacocoTestReport, jacocoTestCoverageVerification
+}
+
+// Jacoco configuration
+def reportsTargetFolder = "${jacoco.reportsDir}/all-tests/"
+def jacocoReportXml = "${reportsTargetFolder}jacocoAllTestReport.xml"
+def coverageExcluded = ['**/*Test.*', '**/model/**', '**/config/**', '**/*Application.*']
+
+jacocoTestReport {
+    getExecutionData().setFrom(fileTree(buildDir).include("/jacoco/*.exec"))
+    reports {
+        xml.enabled true
+        xml.destination(file("${jacocoReportXml}"))
+        html.enabled true
+        html.destination(file("${reportsTargetFolder}html"))
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: coverageExcluded)
+        }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    getExecutionData().setFrom(fileTree(buildDir).include("/jacoco/*.exec"))
+    violationRules {
+        rule {
+            limit {
+                minimum = 1.00
+            }
+        }
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: coverageExcluded)
+        }))
+    }
+}
+
+check.dependsOn integrationTest

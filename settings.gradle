@@ -1,0 +1,4 @@
+rootProject.name = 'adapter-service'
+
+include 'adapter-service-client'
+
